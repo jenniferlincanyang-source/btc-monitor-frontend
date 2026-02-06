@@ -70,3 +70,22 @@ body {
 .pulse {
   animation: pulse 2s ease-in-out infinite;
 }
+
+/* Toast 通知动画 */
+@keyframes toastSlideIn {
+  from { opacity: 0; transform: translateX(100%); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+@keyframes drawerSlideIn {
+  from { transform: translateX(100%); }
+  to { transform: translateX(0); }
+}
+
+.toast-slide-in {
+  animation: toastSlideIn 0.3s ease-out;
+}
+
+.drawer-slide-in {
+  animation: drawerSlideIn 0.25s ease-out;
+}

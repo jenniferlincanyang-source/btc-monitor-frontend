@@ -54,3 +54,66 @@ export interface CorrelationPoint {
   metric: number;
   metricName: string;
 }
+
+/* ── 预警系统 ── */
+
+export type AlertSeverity = 'info' | 'warning' | 'critical';
+
+export type AlertCategory =
+  | 'dormant_activation'
+  | 'long_trap_signal'
+  | 'derivatives_hedging'
+  | 'new_whale_top100'
+  | 'large_inflow'
+  | 'large_outflow';
+
+export interface Alert {
+  id: string;
+  timestamp: number;
+  severity: AlertSeverity;
+  category: AlertCategory;
+  title: string;
+  message: string;
+  data?: Record<string, any>;
+  read: boolean;
+}
+
+/* ── 预测系统 ── */
+
+export type PredictionTarget = 'price' | 'tx_volume' | 'whale_movement' | 'large_tx';
+
+export type PredictionDirection = 'up' | 'down' | 'neutral';
+
+export interface PredictionSignal {
+  name: string;
+  direction: PredictionDirection;
+  weight: number;
+  value: number;
+}
+
+export interface Prediction {
+  id: string;
+  createdAt: number;
+  targetTime: number;           // createdAt + 300 (5分钟)
+  target: PredictionTarget;
+  direction: PredictionDirection;
+  currentValue: number;
+  predictedValue: number;
+  predictedChange: number;      // 百分比
+  confidence: number;           // 0-100
+  signals: PredictionSignal[];
+  resolved: boolean;
+  actualValue?: number;
+  actualChange?: number;
+  accurate?: boolean;           // 方向是否正确
+  error?: number;               // 预测误差百分比
+}
+
+export interface PredictionAccuracy {
+  target: PredictionTarget;
+  totalPredictions: number;
+  correctPredictions: number;
+  accuracy: number;
+  avgError: number;
+  last24hAccuracy: number;
+}

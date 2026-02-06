@@ -6,8 +6,13 @@ import ExchangeFlow from './components/ExchangeFlow';
 import TopHolders from './components/TopHolders';
 import OnChainStats from './components/OnChainStats';
 import CorrelationDashboard from './components/CorrelationDashboard';
+import AlertMonitor from './components/AlertMonitor';
+import AlertPanel from './components/AlertPanel';
+import PredictionDashboard from './components/PredictionDashboard';
+import { useAlerts } from './hooks/useAlerts';
+import { usePredictions } from './hooks/usePredictions';
 
-type Tab = 'overview' | 'whale' | 'exchange' | 'holders' | 'correlation';
+type Tab = 'overview' | 'whale' | 'exchange' | 'holders' | 'correlation' | 'alerts' | 'prediction';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'overview', label: '总览', icon: '📊' },
@@ -15,10 +20,32 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'exchange', label: '交易所流向', icon: '🏦' },
   { key: 'holders', label: 'Top 100', icon: '👑' },
   { key: 'correlation', label: '关联分析', icon: '🔗' },
+  { key: 'alerts', label: '实时预警', icon: '🚨' },
+  { key: 'prediction', label: '预测', icon: '🔮' },
 ];
 
 export default function App() {
   const [tab, setTab] = useState<Tab>('overview');
+  const [alertPanelOpen, setAlertPanelOpen] = useState(false);
+
+  const {
+    alerts,
+    toasts,
+    unreadCount,
+    addAlert,
+    markRead,
+    markAllRead,
+    clearAll,
+    dismissToast,
+  } = useAlerts();
+
+  const {
+    activePredictions,
+    resolvedPredictions,
+    addPrediction,
+    resolvePrediction,
+    getAccuracy,
+  } = usePredictions();
 
   return (
     <div style={styles.app}>
@@ -44,6 +71,17 @@ export default function App() {
           ))}
         </nav>
         <div style={styles.headerRight}>
+          <AlertPanel
+            alerts={alerts}
+            toasts={toasts}
+            unreadCount={unreadCount}
+            isOpen={alertPanelOpen}
+            onToggle={() => setAlertPanelOpen((o) => !o)}
+            onMarkRead={markRead}
+            onMarkAllRead={markAllRead}
+            onClearAll={clearAll}
+            onDismissToast={dismissToast}
+          />
           <div style={styles.liveDot} />
           <span style={styles.liveText}>实时</span>
         </div>
@@ -72,12 +110,22 @@ export default function App() {
           {tab === 'exchange' && <ExchangeFlow />}
           {tab === 'holders' && <TopHolders />}
           {tab === 'correlation' && <CorrelationDashboard />}
+          {tab === 'alerts' && <AlertMonitor addAlert={addAlert} alerts={alerts} />}
+          {tab === 'prediction' && (
+            <PredictionDashboard
+              activePredictions={activePredictions}
+              resolvedPredictions={resolvedPredictions}
+              addPrediction={addPrediction}
+              resolvePrediction={resolvePrediction}
+              getAccuracy={getAccuracy}
+            />
+          )}
         </ErrorBoundary>
       </main>
 
       {/* 底部 */}
       <footer style={styles.footer}>
-        <span>数据来源: CoinGecko | Blockchain.com | Mempool.space | Blockchair</span>
+        <span>数据来源: CoinGecko | Blockchain.com | Mempool.space | Blockchair | Blockstream</span>
         <span>所有 API 均为免费公开接口，无需 API Key</span>
       </footer>
     </div>

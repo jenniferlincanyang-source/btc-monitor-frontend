@@ -441,3 +441,54 @@ export async function fetchMempoolInfo(): Promise<{
     },
   };
 }
+
+/* ── 10. 地址休眠检测 (Blockstream) ── */
+const dormancyCache = new Map<string, { lastActive: number; checkedAt: number }>();
+
+export async function checkAddressDormancy(address: string): Promise<{
+  lastActive: number;
+  dormantDays: number;
+}> {
+  if (address === 'coinbase' || address === 'unknown') {
+    return { lastActive: 0, dormantDays: 0 };
+  }
+  const cached = dormancyCache.get(address);
+  if (cached && Date.now() - cached.checkedAt < 600000) {
+    const dormantDays = Math.floor((Date.now() / 1000 - cached.lastActive) / 86400);
+    return { lastActive: cached.lastActive, dormantDays };
+  }
+  try {
+    const txs = await fetchJSON<any[]>(`${BLOCKSTREAM}/address/${address}/txs`);
+    if (!txs || txs.length === 0) {
+      return { lastActive: 0, dormantDays: 9999 };
+    }
+    // 找到最近一笔交易的时间（排除当前这笔）
+    const sorted = txs
+      .filter((tx: any) => tx.status?.block_time)
+      .sort((a: any, b: any) => (b.status.block_time || 0) - (a.status.block_time || 0));
+    // 如果只有1笔交易，用它的时间；否则用第二笔（第一笔可能是刚发生的）
+    const lastActive = sorted.length > 1
+      ? sorted[1].status.block_time
+      : sorted[0]?.status.block_time || 0;
+    const dormantDays = Math.floor((Date.now() / 1000 - lastActive) / 86400);
+    dormancyCache.set(address, { lastActive, checkedAt: Date.now() });
+    return { lastActive, dormantDays };
+  } catch {
+    return { lastActive: 0, dormantDays: 0 };
+  }
+}
+
+/* ── 11. 细粒度价格历史 (CoinGecko, 5分钟级别) ── */
+export async function fetchGranularPriceHistory(): Promise<{ time: number; price: number }[]> {
+  // days=1 返回约 288 个 5 分钟粒度数据点
+  const data = await fetchJSON<any>(
+    `${COINGECKO}/coins/bitcoin/market_chart?vs_currency=usd&days=1`
+  );
+  return data.prices.map(([ts, price]: [number, number]) => ({
+    time: Math.floor(ts / 1000),
+    price,
+  }));
+}
+
+/* ── 导出已知交易所地址供其他模块使用 ── */
+export { KNOWN_EXCHANGES };
