@@ -1,6 +1,9 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createChart, IChartApi } from 'lightweight-charts';
 import { fetchExchangeFlows } from '../api';
+import { predictExchangeNetflow, adjustConfidence } from '../prediction';
+import EmbeddedPredictionPanel from './EmbeddedPredictionPanel';
+import type { GenerateResult } from './EmbeddedPredictionPanel';
 import type { ExchangeFlowData } from '../types';
 
 export default function ExchangeFlow() {
@@ -97,6 +100,29 @@ export default function ExchangeFlow() {
   const totalOutflow = flows.reduce((s, f) => s + f.outflow, 0);
   const totalNetflow = totalInflow - totalOutflow;
 
+  const handleGenerate = useCallback(async (): Promise<GenerateResult | null> => {
+    const data = await fetchExchangeFlows(14).catch(() => []);
+    if (data.length < 3) return null;
+    const inflows = data.map((d: ExchangeFlowData) => d.inflow);
+    const outflows = data.map((d: ExchangeFlowData) => d.outflow);
+    const result = predictExchangeNetflow(inflows, outflows);
+    const currentNet = data[data.length - 1].netflow;
+    const conf = adjustConfidence(result.confidence, 50);
+    return {
+      direction: result.direction,
+      change: result.change,
+      confidence: conf,
+      currentValue: currentNet,
+      predictedValue: currentNet * (1 + result.change / 100),
+      reasons: result.reasons,
+    };
+  }, []);
+
+  const handleResolve = useCallback(async (): Promise<number> => {
+    const data = await fetchExchangeFlows(1).catch(() => []);
+    return data.length > 0 ? data[data.length - 1].netflow : 0;
+  }, []);
+
   return (
     <div style={styles.container}>
       <div style={styles.header}>
@@ -150,6 +176,16 @@ export default function ExchangeFlow() {
 
       <div style={styles.note}>
         净流入为正 = 更多 BTC 进入交易所 (潜在卖压) | 净流入为负 = 更多 BTC 离开交易所 (囤币信号)
+      </div>
+
+      <div style={{ padding: '0 24px 16px' }}>
+        <EmbeddedPredictionPanel
+          targetType="exchange_netflow"
+          targetLabel="交易所净流量"
+          storageKey="exchange_netflow"
+          onGenerate={handleGenerate}
+          onResolve={handleResolve}
+        />
       </div>
     </div>
   );

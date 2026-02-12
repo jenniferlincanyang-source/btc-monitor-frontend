@@ -1,5 +1,8 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { fetchLargeTransactions, fetchCurrentPrice, createWhaleWebSocket } from '../api';
+import { predictWhaleAlertFreq, adjustConfidence } from '../prediction';
+import EmbeddedPredictionPanel from './EmbeddedPredictionPanel';
+import type { GenerateResult } from './EmbeddedPredictionPanel';
 import type { WhaleTransaction } from '../types';
 
 const TYPE_CONFIG: Record<string, { label: string; color: string; icon: string }> = {
@@ -115,6 +118,28 @@ export default function WhaleAlert() {
     totalBTC: transactions.reduce((s, t) => s + t.amount, 0),
     liveTxCount: liveTxs.length,
   };
+
+  const handleGenerate = useCallback(async (): Promise<GenerateResult | null> => {
+    if (transactions.length === 0) return null;
+    const result = predictWhaleAlertFreq(
+      stats.total, stats.deposits, stats.withdrawals,
+      stats.whaleTransfers, stats.totalBTC, 0
+    );
+    const conf = adjustConfidence(result.confidence, 50);
+    return {
+      direction: result.direction,
+      change: result.change,
+      confidence: conf,
+      currentValue: stats.total,
+      predictedValue: stats.total * (1 + result.change / 100),
+      reasons: result.reasons,
+    };
+  }, [transactions, stats]);
+
+  const handleResolve = useCallback(async (): Promise<number> => {
+    const data = await fetchLargeTransactions(minBTC).catch(() => []);
+    return data.length;
+  }, [minBTC]);
 
   return (
     <div style={styles.container}>
@@ -328,6 +353,16 @@ export default function WhaleAlert() {
       <div style={styles.footer}>
         <span>数据来源: Blockstream (历史) + Mempool.space WebSocket (实时)</span>
         <span>已知交易所地址: Binance, Coinbase, Bitfinex, OKX, Kraken, Huobi, Gemini, Bybit</span>
+      </div>
+
+      <div style={{ padding: '0 24px 16px' }}>
+        <EmbeddedPredictionPanel
+          targetType="whale_alert_freq"
+          targetLabel="大额交易频率"
+          storageKey="whale_alert_freq"
+          onGenerate={handleGenerate}
+          onResolve={handleResolve}
+        />
       </div>
     </div>
   );

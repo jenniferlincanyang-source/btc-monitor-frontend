@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import type { Prediction, PredictionTarget, PredictionAccuracy, PredictionTimeframe } from '../types';
+import type { Prediction, PredictionTarget, PredictionAccuracy, PredictionTimeframe, ResolutionExplanation } from '../types';
 
 const STORAGE_KEY = 'btc_monitor_predictions';
 const MAX_PREDICTIONS = 500;
@@ -37,6 +37,7 @@ export function usePredictions(timeframe?: PredictionTimeframe) {
   const resolvePrediction = useCallback((
     id: string,
     actualValue: number,
+    resolution?: ResolutionExplanation,
   ) => {
     setPredictions((prev) => {
       const next = prev.map((p) => {
@@ -55,6 +56,7 @@ export function usePredictions(timeframe?: PredictionTimeframe) {
           actualChange,
           accurate: directionCorrect,
           error: Math.abs(actualChange - p.predictedChange),
+          ...(resolution ? { resolution } : {}),
         };
       });
       savePredictions(next, timeframe);

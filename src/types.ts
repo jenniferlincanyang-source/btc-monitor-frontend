@@ -80,11 +80,13 @@ export interface Alert {
 
 /* ── 预测系统 ── */
 
-export type PredictionTarget = 'price' | 'tx_volume' | 'whale_movement' | 'large_tx';
+export type PredictionTarget = 'price' | 'tx_volume' | 'whale_movement' | 'large_tx'
+  | 'exchange_netflow' | 'correlation_signal' | 'holder_trend' | 'whale_alert_freq';
 
 export type PredictionDirection = 'up' | 'down' | 'neutral';
 
-export type PredictionTimeframe = '5m' | '20m' | '1h' | '6h' | '12h' | '1d' | '1w';
+export type PredictionTimeframe = '5m' | '20m' | '1h' | '6h' | '12h' | '1d' | '1w'
+  | 'exchange_netflow' | 'correlation_signal' | 'holder_trend' | 'whale_alert_freq';
 
 export interface TimeframeConfig {
   key: PredictionTimeframe;
@@ -117,6 +119,8 @@ export interface Prediction {
   actualChange?: number;
   accurate?: boolean;           // 方向是否正确
   error?: number;               // 预测误差百分比
+  reasons?: PredictionReason[];
+  resolution?: ResolutionExplanation;
 }
 
 export interface PredictionAccuracy {
@@ -126,4 +130,16 @@ export interface PredictionAccuracy {
   accuracy: number;
   avgError: number;
   last24hAccuracy: number;
+}
+
+export interface PredictionReason {
+  signal: string;
+  impact: 'bullish' | 'bearish' | 'neutral';
+  detail: string;
+}
+
+export interface ResolutionExplanation {
+  summary: string;
+  reasons: string[];
+  keyFactor: string;
 }

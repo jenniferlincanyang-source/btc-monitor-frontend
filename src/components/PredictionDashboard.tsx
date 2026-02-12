@@ -25,6 +25,10 @@ const TARGET_LABELS: Record<PredictionTarget, string> = {
   tx_volume: '交易流量',
   whale_movement: '巨鲸动向',
   large_tx: '大额交易',
+  exchange_netflow: '交易所净流量',
+  correlation_signal: '行情联动信号',
+  holder_trend: '巨鲸持仓趋势',
+  whale_alert_freq: '大额交易频率',
 };
 
 const TARGET_ICONS: Record<PredictionTarget, string> = {
@@ -32,6 +36,10 @@ const TARGET_ICONS: Record<PredictionTarget, string> = {
   tx_volume: '📊',
   whale_movement: '🐋',
   large_tx: '💎',
+  exchange_netflow: '🔄',
+  correlation_signal: '📈',
+  holder_trend: '🏦',
+  whale_alert_freq: '⚡',
 };
 
 const DIR_LABELS: Record<PredictionDirection, { text: string; color: string; arrow: string }> = {

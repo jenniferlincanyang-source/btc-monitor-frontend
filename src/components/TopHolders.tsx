@@ -1,5 +1,8 @@
-import { useState, useEffect } from 'react';
-import { fetchTopHolders } from '../api';
+import { useState, useEffect, useCallback } from 'react';
+import { fetchTopHolders, fetchExchangeFlows } from '../api';
+import { predictHolderTrend, adjustConfidence } from '../prediction';
+import EmbeddedPredictionPanel from './EmbeddedPredictionPanel';
+import type { GenerateResult } from './EmbeddedPredictionPanel';
 import type { TopHolder } from '../types';
 
 export default function TopHolders() {
@@ -31,6 +34,29 @@ export default function TopHolders() {
   const exchangeHolders = holders.filter((h) => !['巨鲸地址', 'unknown', 'Satoshi Era Wallet'].includes(h.label));
   const exchangeBTC = exchangeHolders.reduce((s, h) => s + h.balance, 0);
   const totalBTC = holders.reduce((s, h) => s + h.balance, 0);
+
+  const handleGenerate = useCallback(async (): Promise<GenerateResult | null> => {
+    if (holders.length === 0) return null;
+    const nonExBTC = totalBTC - exchangeBTC;
+    const exRatio = totalBTC > 0 ? exchangeBTC / totalBTC : 0;
+    const flowData = await fetchExchangeFlows(3).catch(() => []);
+    const recentNet = flowData.length > 0 ? flowData.reduce((s: number, f: { netflow: number }) => s + f.netflow, 0) : 0;
+    const result = predictHolderTrend(totalBTC, exchangeBTC, nonExBTC, exRatio, recentNet);
+    const conf = adjustConfidence(result.confidence, 50);
+    return {
+      direction: result.direction,
+      change: result.change,
+      confidence: conf,
+      currentValue: totalBTC,
+      predictedValue: totalBTC * (1 + result.change / 100),
+      reasons: result.reasons,
+    };
+  }, [holders, totalBTC, exchangeBTC]);
+
+  const handleResolve = useCallback(async (): Promise<number> => {
+    const data = await fetchTopHolders().catch(() => []);
+    return data.reduce((s: number, h: TopHolder) => s + h.balance, 0);
+  }, []);
 
   return (
     <div style={styles.container}>
@@ -159,6 +185,16 @@ export default function TopHolders() {
           </div>
         </>
       )}
+
+      <div style={{ padding: '0 24px 16px' }}>
+        <EmbeddedPredictionPanel
+          targetType="holder_trend"
+          targetLabel="巨鲸持仓趋势"
+          storageKey="holder_trend"
+          onGenerate={handleGenerate}
+          onResolve={handleResolve}
+        />
+      </div>
     </div>
   );
 }

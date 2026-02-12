@@ -1,6 +1,10 @@
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { createChart, IChartApi } from 'lightweight-charts';
 import { fetchPriceHistory, fetchExchangeFlows } from '../api';
+import { predictCorrelationSignal, adjustConfidence } from '../prediction';
+import EmbeddedPredictionPanel from './EmbeddedPredictionPanel';
+import type { GenerateResult } from './EmbeddedPredictionPanel';
+import type { ExchangeFlowData } from '../types';
 
 export default function CorrelationDashboard() {
   const chartRef = useRef<HTMLDivElement>(null);
@@ -8,6 +12,9 @@ export default function CorrelationDashboard() {
   const [loading, setLoading] = useState(true);
   const [correlation, setCorrelation] = useState<number | null>(null);
   const [signal, setSignal] = useState<{ type: string; message: string; color: string } | null>(null);
+  const [pricesCache, setPricesCache] = useState<number[]>([]);
+  const [netflowsCache, setNetflowsCache] = useState<number[]>([]);
+  const [corrCache, setCorrCache] = useState(0);
 
   useEffect(() => {
     if (!chartRef.current) return;
@@ -77,7 +84,10 @@ export default function CorrelationDashboard() {
           );
           setCorrelation(corr);
 
-          // 生成信号
+          // Cache for prediction
+          setPricesCache(prices.slice(0, minLen));
+          setNetflowsCache(flows.slice(0, minLen));
+          setCorrCache(corr);
           const recentNetflow = flowData.slice(-3).reduce((s, f) => s + f.netflow, 0);
           if (recentNetflow > 3000) {
             setSignal({
@@ -121,6 +131,33 @@ export default function CorrelationDashboard() {
         chartInstance.current = null;
       }
     };
+  }, []);
+
+  const handleGenerate = useCallback(async (): Promise<GenerateResult | null> => {
+    if (pricesCache.length < 10 || netflowsCache.length < 10) return null;
+    const result = predictCorrelationSignal(pricesCache, netflowsCache, corrCache);
+    const conf = adjustConfidence(result.confidence, 50);
+    return {
+      direction: result.direction,
+      change: result.change,
+      confidence: conf,
+      currentValue: Math.abs(corrCache) * 100,
+      predictedValue: Math.abs(corrCache) * 100 * (1 + result.change / 100),
+      reasons: result.reasons,
+    };
+  }, [pricesCache, netflowsCache, corrCache]);
+
+  const handleResolve = useCallback(async (): Promise<number> => {
+    try {
+      const [priceData, flowData] = await Promise.all([fetchPriceHistory(30), fetchExchangeFlows(30)]);
+      if (priceData.length > 5 && flowData.length > 5) {
+        const prices = priceData.slice(-flowData.length).map((p) => p.price);
+        const flows = flowData.map((f: ExchangeFlowData) => f.netflow);
+        const minLen = Math.min(prices.length, flows.length);
+        return Math.abs(pearsonCorrelation(prices.slice(0, minLen), flows.slice(0, minLen))) * 100;
+      }
+    } catch { /* ignore */ }
+    return 0;
   }, []);
 
   return (
@@ -188,6 +225,16 @@ export default function CorrelationDashboard() {
             </div>
           </div>
         </div>
+      </div>
+
+      <div style={{ padding: '0 24px 16px' }}>
+        <EmbeddedPredictionPanel
+          targetType="correlation_signal"
+          targetLabel="行情联动信号"
+          storageKey="correlation_signal"
+          onGenerate={handleGenerate}
+          onResolve={handleResolve}
+        />
       </div>
     </div>
   );
