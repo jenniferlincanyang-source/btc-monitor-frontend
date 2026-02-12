@@ -9,10 +9,11 @@ import CorrelationDashboard from './components/CorrelationDashboard';
 import AlertMonitor from './components/AlertMonitor';
 import AlertPanel from './components/AlertPanel';
 import PredictionDashboard from './components/PredictionDashboard';
+import MultiTimeframePrediction from './components/MultiTimeframePrediction';
 import { useAlerts } from './hooks/useAlerts';
 import { usePredictions } from './hooks/usePredictions';
 
-type Tab = 'overview' | 'whale' | 'exchange' | 'holders' | 'correlation' | 'alerts' | 'prediction';
+type Tab = 'overview' | 'whale' | 'exchange' | 'holders' | 'correlation' | 'alerts' | 'prediction' | 'multi-prediction';
 
 const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'overview', label: '总览', icon: '📊' },
@@ -22,6 +23,7 @@ const TABS: { key: Tab; label: string; icon: string }[] = [
   { key: 'correlation', label: '关联分析', icon: '🔗' },
   { key: 'alerts', label: '实时预警', icon: '🚨' },
   { key: 'prediction', label: '预测', icon: '🔮' },
+  { key: 'multi-prediction', label: '多周期预测', icon: '📈' },
 ];
 
 export default function App() {
@@ -120,6 +122,7 @@ export default function App() {
               getAccuracy={getAccuracy}
             />
           )}
+          {tab === 'multi-prediction' && <MultiTimeframePrediction />}
         </ErrorBoundary>
       </main>
 

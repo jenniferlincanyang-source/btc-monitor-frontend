@@ -84,6 +84,15 @@ export type PredictionTarget = 'price' | 'tx_volume' | 'whale_movement' | 'large
 
 export type PredictionDirection = 'up' | 'down' | 'neutral';
 
+export type PredictionTimeframe = '5m' | '20m' | '1h' | '6h' | '12h' | '1d' | '1w';
+
+export interface TimeframeConfig {
+  key: PredictionTimeframe;
+  label: string;
+  seconds: number;       // 周期秒数
+  priceDays: number;     // CoinGecko market_chart days 参数
+}
+
 export interface PredictionSignal {
   name: string;
   direction: PredictionDirection;
@@ -94,9 +103,10 @@ export interface PredictionSignal {
 export interface Prediction {
   id: string;
   createdAt: number;
-  targetTime: number;           // createdAt + 300 (5分钟)
+  targetTime: number;           // createdAt + timeframe seconds
   target: PredictionTarget;
   direction: PredictionDirection;
+  timeframe: PredictionTimeframe;
   currentValue: number;
   predictedValue: number;
   predictedChange: number;      // 百分比

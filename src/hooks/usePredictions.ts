@@ -1,34 +1,38 @@
 import { useState, useCallback } from 'react';
-import type { Prediction, PredictionTarget, PredictionAccuracy } from '../types';
+import type { Prediction, PredictionTarget, PredictionAccuracy, PredictionTimeframe } from '../types';
 
 const STORAGE_KEY = 'btc_monitor_predictions';
 const MAX_PREDICTIONS = 500;
 
-function loadPredictions(): Prediction[] {
+function storageKey(tf?: PredictionTimeframe): string {
+  return tf ? `${STORAGE_KEY}_${tf}` : STORAGE_KEY;
+}
+
+function loadPredictions(tf?: PredictionTimeframe): Prediction[] {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
+    const raw = localStorage.getItem(storageKey(tf));
     return raw ? JSON.parse(raw) : [];
   } catch {
     return [];
   }
 }
 
-function savePredictions(predictions: Prediction[]) {
+function savePredictions(predictions: Prediction[], tf?: PredictionTimeframe) {
   try {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(predictions.slice(0, MAX_PREDICTIONS)));
+    localStorage.setItem(storageKey(tf), JSON.stringify(predictions.slice(0, MAX_PREDICTIONS)));
   } catch { /* quota exceeded */ }
 }
 
-export function usePredictions() {
-  const [predictions, setPredictions] = useState<Prediction[]>(loadPredictions);
+export function usePredictions(timeframe?: PredictionTimeframe) {
+  const [predictions, setPredictions] = useState<Prediction[]>(() => loadPredictions(timeframe));
 
   const addPrediction = useCallback((prediction: Prediction) => {
     setPredictions((prev) => {
       const next = [prediction, ...prev].slice(0, MAX_PREDICTIONS);
-      savePredictions(next);
+      savePredictions(next, timeframe);
       return next;
     });
-  }, []);
+  }, [timeframe]);
 
   const resolvePrediction = useCallback((
     id: string,
@@ -53,10 +57,10 @@ export function usePredictions() {
           error: Math.abs(actualChange - p.predictedChange),
         };
       });
-      savePredictions(next);
+      savePredictions(next, timeframe);
       return next;
     });
-  }, []);
+  }, [timeframe]);
 
   const getAccuracy = useCallback((target?: PredictionTarget): PredictionAccuracy[] => {
     const targets: PredictionTarget[] = target
@@ -87,8 +91,8 @@ export function usePredictions() {
 
   const clearHistory = useCallback(() => {
     setPredictions([]);
-    savePredictions([]);
-  }, []);
+    savePredictions([], timeframe);
+  }, [timeframe]);
 
   const activePredictions = predictions.filter((p) => !p.resolved);
   const resolvedPredictions = predictions.filter((p) => p.resolved);

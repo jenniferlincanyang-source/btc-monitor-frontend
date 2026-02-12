@@ -490,5 +490,17 @@ export async function fetchGranularPriceHistory(): Promise<{ time: number; price
   }));
 }
 
+/* ── 12. 多时间框架价格历史 (CoinGecko) ── */
+export async function fetchPriceHistoryForTimeframe(days: number): Promise<{ time: number; price: number }[]> {
+  // days=1 → 5min粒度, days<=90 → hourly, days>90 → daily
+  const data = await fetchJSON<any>(
+    `${COINGECKO}/coins/bitcoin/market_chart?vs_currency=usd&days=${days}`
+  );
+  return data.prices.map(([ts, price]: [number, number]) => ({
+    time: Math.floor(ts / 1000),
+    price,
+  }));
+}
+
 /* ── 导出已知交易所地址供其他模块使用 ── */
 export { KNOWN_EXCHANGES };
